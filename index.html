@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Combat Doctrine Tracker</title>
+<style>
+:root{--field:#0a111f;--panel:#13203a;--panel-hi:#1c2d52;--gold:#d6b25e;--gold-dim:#7d6a3c;--bone:#eee9dc;--muted:#a9b3c6;--on:#12100a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--field);color:var(--bone);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",Arial,sans-serif;line-height:1.5;padding:calc(20px + env(safe-area-inset-top,0px)) 16px calc(60px + env(safe-area-inset-bottom,0px))}
+main{max-width:720px;margin:0 auto}
+h1{font-size:1.8rem;font-weight:600;margin:0 0 4px;color:var(--gold)}
+h2{font-size:1.15rem;font-weight:600;color:var(--gold);margin:28px 0 10px}
+.sub{color:var(--muted);margin:0 0 18px}
+.topbar{text-align:right;margin:0 0 10px;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border-top:2px solid var(--gold);border-bottom:1px solid var(--gold-dim);padding:12px 0;margin-bottom:16px}
+button{font:inherit;cursor:pointer;color:var(--bone);background:transparent;border:1px solid var(--gold-dim);padding:7px 13px;border-radius:4px}
+button:hover:not(:disabled){border-color:var(--gold);background:var(--panel-hi)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600}
+button[aria-pressed="true"]{background:var(--gold);color:var(--on);border-color:var(--gold);font-weight:600}
+.summary{color:var(--muted);margin:0 0 14px}.summary strong{color:var(--gold)}
+.dets{border:1px solid var(--gold-dim);margin:0 0 14px;padding:8px 12px;border-radius:4px}
+.dets legend{color:var(--muted);padding:0 6px}
+.dets label{display:inline-flex;gap:6px;align-items:center;margin:4px 14px 4px 0;cursor:pointer}
+.dets input{accent-color:var(--gold)}
+.cards{display:grid;gap:10px}
+.card{background:var(--panel);border:1px solid var(--gold-dim);border-left:6px solid var(--gold-dim);padding:12px 14px;border-radius:4px}
+.card.on{border-left-color:var(--gold);background:var(--panel-hi)}
+.card h3{margin:0;font-size:1.05rem;font-weight:600}
+.card p{margin:4px 0 0;color:var(--muted);font-size:.92rem;white-space:pre-line}
+.card .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:8px}
+.card.on p.st{color:var(--gold)}
+.box{border:1px solid var(--gold);background:var(--panel);padding:10px 14px;border-radius:4px;margin-bottom:10px}
+.box b{color:var(--gold);font-weight:600}.box p{margin:4px 0 0;font-size:.92rem}
+.box label{display:block;margin-top:6px;cursor:pointer;font-size:.92rem}
+form{display:flex;gap:8px;margin:18px 0 14px}
+input[type=text],select{font:inherit;color:var(--bone);background:var(--panel);border:1px solid var(--gold-dim);padding:8px 10px;border-radius:4px;min-width:0}
+input[type=text]{flex:1}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.unit{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.unit .btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.x{border:none;color:var(--muted);padding:4px 8px;font-size:1.2rem}
+details{background:var(--panel);border:1px solid var(--gold-dim);padding:8px 14px;margin-bottom:8px;border-radius:4px}
+summary{cursor:pointer}
+details ul{margin-top:8px;gap:2px;color:var(--muted);font-size:.95rem}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.hint{margin-top:26px;color:var(--muted);font-size:.9rem;border-top:1px solid var(--gold-dim);padding-top:12px}
+</style>
+</head>
+<body>
+<main>
+  <noscript><p style="border:1px solid #d6b25e;padding:10px 14px">This page needs JavaScript. Open it in a web browser such as Safari or Chrome.</p></noscript>
+  <p class="topbar"><label>Theme: <select id="theme"></select></label></p>
+  <h1>Combat doctrine tracker</h1>
+  <p class="sub">All Space Marine Chapters. Pick the army doctrine in your Command phase, then give individual units their own.</p>
+
+  <div class="bar">
+    <button class="primary" id="save">Save turn and new Command phase</button>
+    <button id="reset">New Command phase</button>
+    <button id="battle">New battle</button>
+  </div>
+
+  <p class="summary" id="summary"></p>
+  <div class="cards" id="docs"></div>
+
+  <h2>Chapter and detachments</h2>
+  <p class="summary"><label>Chapter: <select id="chapter"></select></label></p>
+  <fieldset class="dets"><legend>Tick the detachments you're using</legend><div id="det"></div></fieldset>
+  <p class="summary" id="dp"></p>
+  <div id="detbox"></div>
+
+  <h2>Units</h2>
+  <form id="add">
+    <input type="text" id="name" list="presets" placeholder="Add a unit, e.g. Crusader Squad" autocomplete="off" aria-label="Unit name">
+    <datalist id="presets"></datalist>
+    <button class="primary" type="button" id="addbtn">Add unit</button>
+  </form>
+  <ul id="list"></ul>
+
+  <div id="histwrap" hidden>
+    <h2>Saved turns</h2>
+    <div id="hist"></div>
+    <button id="clearhist">Clear saved turns</button>
+  </div>
+
+  <h2>Backup</h2>
+  <div class="acts">
+    <button id="export">Export data</button>
+    <button id="import">Import data</button>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+  </div>
+  <p class="sub" id="bkmsg" role="status"></p>
+
+  <p class="hint">Each doctrine can normally be picked once per battle, and the detachments you tick add extra uses. Picking one for the army uses up a pick; tap it again to undo. Pick your Chapter to see its detachments and characters; an army can only include one Chapter. A unit's own doctrine (from a stratagem or enhancement) replaces the army doctrine for that unit and doesn't use an army pick. “New Command phase” clears the active doctrines but keeps your used picks. “New battle” also restores all picks. Everything is saved in this browser on this device.</p>
+</main>
+
+<script>
+const KEY = "doctrine-tracker-v1";
+let S = { units: [], dets: [], history: [], uses: { Assault: 0, Devastator: 0, Tactical: 0 }, active: null, calgar: false, gladius: "Assault", vow: "", chapter: "Space Marines (no Chapter)", theme: "auto" };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.units)) S = Object.assign(S, s); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+const $ = id => document.getElementById(id);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+
+const DOCS = [
+  { n: "Assault", ph: "Movement", fx: `When the unit makes an advance move, that move doesn't stop it being eligible to declare a charge.` },
+  { n: "Devastator", ph: "Shooting", fx: `The unit's ranged attacks have [Assault].` },
+  { n: "Tactical", ph: "Fall back", fx: `When the unit makes a fall-back move, that move doesn't stop it being eligible to shoot and to declare a charge.` }
+];
+const D = (n, dp, rule, b, x) => Object.assign({ n, dp, rule, b: b || {} }, x);
+const CH = (c, ...a) => Object.assign(D(...a), { ch: c });
+const NR = `Rule text isn't included here, so check your Codex.`;
+const SWAP = `pick a doctrine to be active for one unit until your next Command phase.`;
+const VEN = `Venator Omni-auspex (enhancement): attacks against hidden units can re-roll wound rolls of 1 and 2.`;
+const DETS = [
+  D("Gladius Task Force", 3, `Codex Discipline: select one combat doctrine one additional time per battle (choose which below).`,
+    { Assault: [`Laurels of Triumph (enhancement): the bearer's melee attacks get +2 S and AP instead of +1.`], Tactical: [`Adept of the Codex (Captain enhancement): Tactical is also active for the bearer's unit, alongside any other doctrine.`] },
+    { up: "Pick", strat: `Adaptive Strategy (1CP, your Command phase): ${SWAP}` }),
+  D("Assault Brethren", 1, `Assault Mastery: you can select the Assault doctrine one additional time per battle.`,
+    { Assault: [`Gene-wrought Might (1CP, Fight): melee attacks have Lance, plus +1 AP.`, `Duty in Death (1CP): the roll to keep a destroyed model fighting gets +1.`] }, { up: "Assault" }),
+  D("Tactical Brethren", 1, `Tactical Mastery: you can select the Tactical doctrine one additional time per battle.`,
+    { Tactical: [`Masterful Tactics (1CP, opponent's Movement): a normal move of up to 6" instead of D6".`, `Tactical Insight (Captain enhancement): Tactical is also active for the bearer's unit.`] }, { up: "Tactical" }),
+  D("Devastator Brethren", 1, `Devastator Mastery: you can select the Devastator doctrine one additional time per battle.`,
+    { Devastator: [`Storm of Fire (1CP, Shooting): ranged attacks have Ignores Cover and +1 AP.`, `Honour of Vigilance (enhancement): the bearer's unit can re-roll advance rolls.`] }, { up: "Devastator" }),
+  D("Terminator Storm Force", 1, `Death Blow: friendly TERMINATOR units have +1 to charge rolls.`),
+  D("Tacticus Attack Force", 1, `Wrath of the Chapter: friendly TACTICUS units can re-roll advance rolls.`),
+  D("Tacticus Firestorm Force", 1, `Codex Fire-patterns: friendly TACTICUS units' Rapid Fire attacks get their Rapid Fire bonus out to maximum range.`),
+  D("Phobos Shadow Force", 1, `Shadow Masters: after a friendly PHOBOS or Scout Squad unit shoots, it can stay hidden, or make a normal move of up to D6" (then it can't charge that turn).`, { Assault: [VEN] }),
+  D("Phobos Shock Force", 1, `Vanguard Ambushers: at the end of your Movement phase, hidden PHOBOS units can re-roll wound rolls of 1 until end of turn.`,
+    { Assault: [VEN.replace("1 and 2", "1-2")], Tactical: [`Transhuman Reactions (1CP, opponent's Movement): a normal move of up to 6" instead of D6".`] }),
+  D("Gravis Linebreaker Force", 1, `Walking Fortress: GRAVIS units that made a normal move this turn have ranged attacks without Heavy and with +1 to hit.`),
+  D("Gravis Siege Force", 1, `Indomitable Defence: GRAVIS units within range of an objective: attacks with Strength higher than their Toughness get -1 to wound.`),
+  D("Stormlance Task Force", 1, `Lightning-fast Strike: friendly MOUNTED and SPEEDER units have +2" Move.`),
+  D("Ironclad Champions", 1, `Enduring Vengeance: friendly DREADNOUGHT units can re-roll hit rolls of 1.`),
+  D("Gauntlet Task Force", 1, `Combined Deployment: after a friendly TRANSPORT shoots, pick an enemy unit it hit to be assailed (units that disembarked this turn get Sustained Hits 1 against it). Damocles-class Uplink (Captain enhancement): while embarked, pick a doctrine for an infantry unit within 6" of the transport.`),
+  D("Ironstorm Spearhead", 1, `Ironstorm Auto-targeters: friendly VEHICLE units (not WALKER) can re-roll one hit roll and one wound roll with ranged attacks.`),
+  CH("Ultramarines", "Blade of Ultramar", 3, `Mastered Doctrines: if your army includes Marneus Calgar, you can select each doctrine one additional time per battle.`,
+    { Assault: [`Oath of Macragge (enhancement): the bearer's melee attacks get +2 S and AP instead of +1.`], Tactical: [`Student of the Codex (Captain enhancement): Tactical is also active for the bearer's unit.`] },
+    { up: "All", strat: `Ultramarian Adaptivity (1CP, your Command phase): ${SWAP}` }),
+  CH("Iron Hands", "Medusa's Wrath", 2, `Armoured Wrath: when a friendly unit is selected to shoot or fight, it can re-roll one hit roll, or one wound roll, or one damage roll (all three if within 6" of Cannok Var or Iron Father Feirros). Master of the Machine War (enhancement): in your Movement phase, pick Devastator or Tactical for a visible friendly VEHICLE within 6" until your next Command phase.`),
+  CH("Imperial Fists", "Ceramite Sentinels", 2, `Adaptive Defence: units in a terrain area can re-roll wound rolls of 1, and are entrenched if they stay put there (Lysander and Garadon always are).`),
+  CH("Black Templars", "Fist of the God-Emperor", 1, `Purge and Sanctify: a Crusader Squad's surge move can head for the closest objective.`, {},
+    { strat: `Doctrinal Flexibility (1CP, your Command phase): a Crusader Squad unit gets a doctrine of your choice until your next Command phase.` }),
+  CH("Black Templars", "Marshal's Household", 1, `Faith-fuelled Resolve: in the Fight phase, Sword Brethren Squad units on an objective have +1 Attacks in melee.`),
+  CH("Black Templars", "Vow-sworn Crusaders", 2, `Templar Vows: at the start of the first battle round, pick one Vow. It is active for friendly Adeptus Astartes units until the end of the battle.`, {}, { vows: true }),
+  CH("Blood Angels", "Angelic Inheritors", 3, `Legacy of the Angel: BLOOD ANGELS CHARACTER units can re-roll hit and wound rolls of 1. (Sources disagree on this detachment's cost and wording, so check your Codex.)`),
+  CH("Blood Angels", "Encarmine Speartip", 1, `Wrath of Angels: a rule for Sanguinary Guard, with enhancements for Jump Pack models. ${NR}`),
+  CH("Blood Angels", "Wrath of the Doomed", 1, `Sanguinius' Fury: includes Fanatical Celerity, a rule for Death Company units that advance. ${NR}`),
+  CH("Dark Angels", "Wrath of the Rock", 2, `Dutiful Tenacity: attacks against friendly INFANTRY and MOUNTED units with Strength higher than their Toughness get -1 to wound. Pairs well with Terminator Storm Force.`, {}, { strat: `Tactical Mastery (1CP, your Command phase): pick a doctrine to be active for one DEATHWING or RAVENWING unit until your next Command phase.` }),
+  CH("Dark Angels", "Inner Circle Task Force", 1, `Vowed Target: in your Command phase, pick an objective as your vowed objective until your next Command phase. DEATHWING INFANTRY attacks against enemy units within range of it get +1 to wound.`),
+  CH("Dark Angels", "Darkflight Pursuit", 1, `Black-winged Vigilance: friendly RAVENWING FLY units' ranged attacks have Ignores Cover, and friendly Outrider Squad units have Battleline.`),
+  CH("Deathwatch", "Deathwatch Support", 1, `Mission Tactics: friendly KILL TEAM units get the tactic matching the active doctrine (below). Up to 500 points of Deathwatch can join another Chapter's army.`,
+    { Devastator: [`Furor Tactics (Kill Team): the unit's attacks have Sustained Hits 1.`], Tactical: [`Malleus Tactics (Kill Team): the unit's attacks have Lethal Hits.`], Assault: [`Purgatus Tactics (Kill Team): attacks against enemy units within 9" have Precision.`] }),
+  CH("Deathwatch", "Black Spear Task Force", 3, `Mission Tactics. ${NR}`),
+  CH("Space Wolves", "Saga of the Great Wolf", 2, `Master of Wolves. ${NR}`),
+  CH("Space Wolves", "Champions of Fenris", 1, `The Great Wolf Watches. ${NR}`),
+  CH("Space Wolves", "Saga of the Beastslayer", 1, `Legendary Slayers. ${NR}`),
+  CH("Salamanders", "Forgefather's Seekers", 2, `Vulkan's Quest: you can select the Devastator doctrine one additional time per battle, and friendly ADEPTUS ASTARTES ranged attacks against units within 12" have +1 Strength. If your army includes Vulkan He'stan, Infernus Squads can start an action after advancing or falling back, and can shoot after starting an action. Forged in Fire (1CP, your Shooting phase): an engaged unit's Torrent weapons lose Blast and gain Close-Quarters and +1 Attack.`, {},
+    { up: "Devastator", strat: `Wrath and Ruin (1CP, your Command phase): the Assault or Tactical doctrine is active for one ADEPTUS ASTARTES INFANTRY unit until your next Command phase.` }),
+  CH("Raven Guard", "Shadowmark Talon", 2, `Shadow Tactics: friendly ADEPTUS ASTARTES units have Stealth, and friendly PHOBOS and Scout Squad units have -3" detection range. Aethon Shaan's unit makes the Into Darkness stratagem cost 1CP less, once per battle round. Suppressed Weapons (1CP, your Shooting phase): an ADEPTUS ASTARTES INFANTRY unit's shooting doesn't stop it being hidden.`),
+  CH("White Scars", "Spearpoint Task Force", 2, `Storm-swift Onslaught. ${NR}`)
+];
+const CHAPTERS = ["Space Marines (no Chapter)", "Black Templars", "Blood Angels", "Dark Angels", "Deathwatch", "Imperial Fists", "Iron Hands", "Raven Guard", "Salamanders", "Space Wolves", "Ultramarines", "White Scars"];
+const avail = x => !x.ch || x.ch === S.chapter;
+const VOWS = [
+  { n: "Abhor the Witch, Destroy the Witch", fx: `Melee attacks against PSYKER units have Precision and Lance.` },
+  { n: "Accept Any Challenge, No Matter the Odds", fx: `Friendly melee attacks against a unit whose Toughness is higher than the attacker's Strength have +1 to wound.` },
+  { n: "Uphold the Honour of the Emperor", fx: `Friendly INFANTRY units: at the end of your Movement phase, an objective they control is secured, and advancing doesn't stop them starting an action.` }
+];
+const CORE = ["Captain", "Captain in Terminator Armour", "Captain in Gravis Armour", "Captain in Phobos Armour", "Captain with Jump Pack", "Captain on Bike", "Lieutenant", "Chaplain", "Chaplain with Jump Pack", "Chaplain in Terminator Armour", "Judiciar", "Librarian", "Apothecary", "Apothecary Biologis", "Techmarine", "Ancient", "Bladeguard Ancient", "Company Heroes",
+  "Intercessor Squad", "Assault Intercessor Squad", "Heavy Intercessor Squad", "Assault Intercessors with Jump Packs", "Aggressor Squad", "Bladeguard Veteran Squad", "Sternguard Veteran Squad", "Vanguard Veteran Squad with Jump Packs",
+  "Terminator Squad", "Terminator Assault Squad", "Hellblaster Squad", "Eradicator Squad", "Infernus Squad", "Desolation Squad", "Eliminator Squad", "Incursor Squad", "Infiltrator Squad", "Reiver Squad", "Scout Squad", "Inceptor Squad", "Outrider Squad", "Invader ATVs",
+  "Redemptor Dreadnought", "Ballistus Dreadnought", "Venerable Dreadnought", "Land Raider", "Land Raider Crusader", "Land Raider Redeemer", "Predator Destructor", "Vindicator", "Whirlwind", "Repulsor", "Repulsor Executioner", "Impulsor", "Gladiator Lancer", "Storm Speeder Hailstrike", "Land Speeder", "Drop Pod", "Stormraven Gunship", "Thunderhawk Gunship", "Firestrike Servo-turrets", "Imperial Space Marine"];
+const UNITS = {
+  "Black Templars": ["High Marshal Helbrecht", "Chaplain Grimaldus", "Emperor's Champion", "Crusader Squad", "Sword Brethren Squad"],
+  "Blood Angels": ["Astorath", "Lemartes", "Dante", "Mephiston", "The Sanguinor", "Death Company Marines", "Death Company Captain", "Sanguinary Guard", "Sanguinary Priest", "Baal Predator"],
+  "Dark Angels": ["Azrael", "Belial", "Asmodai", "Ezekiel", "Lazarus", "Sammael", "Deathwing Knights", "Deathwing Terminator Squad", "Ravenwing Black Knights", "Inner Circle Companions"],
+  "Deathwatch": ["Watch Master", "Watch Captain Artemis", "Deathwatch Veterans", "Corvus Blackstar"],
+  "Imperial Fists": ["Darnath Lysander", "Tor Garadon"],
+  "Iron Hands": ["Iron Father Feirros", "Cannok Var"],
+  "Raven Guard": ["Kayvaan Shrike"],
+  "Salamanders": ["Vulkan He'stan", "Adrax Agatone"],
+  "Space Wolves": ["Logan Grimnar", "Ragnar Blackmane", "Ulrik the Slayer", "Njal Stormcaller", "Arjac Rockfist", "Bjorn the Fell-handed", "Wolf Lord", "Wolf Priest", "Blood Claws", "Grey Hunters", "Wolf Guard Terminators", "Thunderwolf Cavalry", "Fenrisian Wolves", "Wulfen"],
+  "Ultramarines": ["Marneus Calgar", "Roboute Guilliman", "Cato Sicarius", "Chief Librarian Tigurius"],
+  "White Scars": ["Kor'sarro Khan"]
+};
+function buildUnits() {
+  const list = (UNITS[S.chapter] || []).concat(CORE);
+  $("presets").innerHTML = "";
+  $("presets").append(...list.map(u => { const o = el("option"); o.value = u; return o; }));
+}
+
+const dinfo = n => DOCS.find(d => d.n === n);
+const total = d => { let t = 1; DETS.forEach(x => { if (!S.dets.includes(x.n)) return; if (x.up === d) t++; if (x.up === "All" && S.calgar) t++; if (x.up === "Pick" && S.gladius === d) t++; }); return t; };
+const bonus = d => DETS.filter(x => S.dets.includes(x.n)).flatMap(x => (x.b && x.b[d]) || []);
+const desc = d => { const i = dinfo(d); const b = bonus(d); return `${d} doctrine (${i.ph}). ${i.fx}` + (b.length ? "\nDetachment effects while active:\n" + b.join("\n") : ""); };
+
+function pick(d) {
+  if (S.active === d) { S.uses[d] = Math.max(0, S.uses[d] - 1); S.active = null; }
+  else { if (S.active) S.uses[S.active] = Math.max(0, S.uses[S.active] - 1); S.uses[d]++; S.active = d; }
+  save(); render();
+}
+
+function renderDocs() {
+  const c = $("docs"); c.innerHTML = "";
+  DOCS.forEach(d => {
+    const left = total(d.n) - S.uses[d.n], on = S.active === d.n;
+    const card = el("div", "card" + (on ? " on" : ""));
+    card.append(el("h3", null, `${d.n} doctrine (${d.ph})`), el("p", null, d.fx));
+    const b = bonus(d.n);
+    if (b.length) card.append(el("p", null, "Detachment effects while active:\n" + b.join("\n")));
+    const row = el("div", "row");
+    row.append(el("span", null, `Picks left: ${Math.max(0, left)} of ${total(d.n)}`));
+    const btn = el("button", null, on ? "Active, tap to undo" : "Pick for army");
+    btn.setAttribute("aria-pressed", on);
+    btn.disabled = !on && left <= 0 && !S.active;
+    if (!on && left <= 0 && S.active) btn.disabled = true;
+    btn.onclick = () => pick(d.n);
+    row.append(btn); card.append(row); c.append(card);
+  });
+  $("summary").innerHTML = S.active ? `Army doctrine this turn: <strong>${S.active}</strong>.` : "No army doctrine picked this turn.";
+}
+
+function renderUnits() {
+  const list = $("list"); list.innerHTML = "";
+  if (!S.units.length) list.append(el("li", null, "No units yet. Add your first unit above."));
+  S.units.forEach(u => {
+    const card = el("li", "card" + (u.doc || S.active ? " on" : ""));
+    const row = el("div", "unit");
+    const info = el("div");
+    info.append(el("div", null, u.name));
+    const eff = u.doc || S.active;
+    const st = el("p", "st", u.doc ? `Unit doctrine: ${desc(u.doc)}` : S.active ? `Following army ${desc(S.active)}` : "No doctrine active");
+    info.append(st);
+    const btns = el("div", "btns");
+    DOCS.forEach(d => {
+      const b = el("button", null, d.n);
+      b.setAttribute("aria-pressed", u.doc === d.n);
+      b.onclick = () => { u.doc = u.doc === d.n ? null : d.n; save(); render(); };
+      btns.append(b);
+    });
+    const x = el("button", "x", "×"); x.setAttribute("aria-label", "Remove " + u.name);
+    x.onclick = () => { S.units = S.units.filter(v => v !== u); save(); render(); };
+    btns.append(x);
+    row.append(info, btns); card.append(row); list.append(card);
+  });
+}
+
+function renderDetBox() {
+  const box = $("detbox"); box.innerHTML = "";
+  DETS.filter(x => S.dets.includes(x.n)).forEach(x => {
+    const d = el("div", "box");
+    d.append(el("b", null, x.n), el("p", null, x.rule));
+    if (x.strat) d.append(el("p", null, x.strat));
+    if (x.up === "Pick") {
+      const l = el("label", null, "Extra pick goes to: ");
+      const s = el("select");
+      DOCS.forEach(o => { const op = el("option", null, o.n); s.append(op); });
+      s.value = S.gladius; s.onchange = () => { S.gladius = s.value; save(); render(); };
+      l.append(s); d.append(l);
+    }
+    if (x.up === "All") {
+      const l = el("label"); const c = el("input"); c.type = "checkbox"; c.checked = S.calgar;
+      c.onchange = () => { S.calgar = c.checked; save(); render(); };
+      l.append(c, document.createTextNode(" My army includes Marneus Calgar"));
+      d.append(l);
+    }
+    if (x.vows) {
+      VOWS.forEach(v => {
+        const l = el("label"); const r = el("input"); r.type = "radio"; r.name = "vow"; r.checked = S.vow === v.n;
+        r.onchange = () => { S.vow = v.n; save(); };
+        l.append(r, document.createTextNode(` ${v.n}. ${v.fx}`));
+        d.append(l);
+      });
+    }
+    box.append(d);
+  });
+}
+
+function renderHistory() {
+  $("histwrap").hidden = !S.history.length;
+  const h = $("hist"); h.innerHTML = "";
+  S.history.forEach((e, i) => {
+    const d = el("details"); d.append(el("summary", null, `Saved ${e.ts}: army doctrine ${e.army || "none"}`));
+    const ul = el("ul");
+    e.units.forEach(u => ul.append(el("li", null, `${u.name}: ${u.doc ? u.doc + " (unit)" : e.army ? e.army + " (army)" : "none"}`)));
+    const del = el("button", null, "Delete this entry");
+    del.onclick = () => { S.history.splice(i, 1); save(); render(); };
+    d.append(ul, del); h.append(d);
+  });
+}
+
+function render() { updateDP(); renderDocs(); renderUnits(); renderDetBox(); renderHistory(); }
+
+function buildDets() {
+  const dl = $("det"); dl.innerHTML = "";
+  S.dets = S.dets.filter(n => { const x = DETS.find(y => y.n === n); return x && avail(x); });
+  DETS.filter(avail).forEach(x => {
+    const l = el("label"); const c = el("input"); c.type = "checkbox"; c.checked = S.dets.includes(x.n);
+    c.onchange = () => { S.dets = DETS.filter(y => avail(y) && (y.n === x.n ? c.checked : S.dets.includes(y.n))).map(y => y.n); save(); render(); };
+    l.append(c, document.createTextNode(`${x.n} (${x.dp}DP)`)); dl.append(l);
+  });
+}
+const chSel = $("chapter");
+CHAPTERS.forEach(c => chSel.append(el("option", null, c)));
+if (!CHAPTERS.includes(S.chapter)) S.chapter = CHAPTERS[0];
+chSel.value = S.chapter;
+chSel.onchange = () => { S.chapter = chSel.value; buildDets(); buildUnits(); applyTheme(); save(); render(); };
+const THEMES = {
+  "Space Marines (no Chapter)": ["#0a111f", "#13203a", "#1c2d52", "#d6b25e", "#7d6a3c", "#eee9dc", "#a9b3c6"],
+  "Black Templars": ["#0b0b0c", "#1a1a1d", "#26262b", "#e6e2d6", "#6e6e74", "#f1efe8", "#b0aea6"],
+  "Blood Angels": ["#2a0809", "#411012", "#55191b", "#e3b653", "#8a6a2b", "#f4e9df", "#cfa8a0"],
+  "Dark Angels": ["#0c1a12", "#14281c", "#1e3b2a", "#d9d2b8", "#6f7a62", "#eef0e4", "#a6b5a3"],
+  "Deathwatch": ["#0a0a0b", "#17181b", "#23252a", "#c9ced6", "#6a707a", "#eceef2", "#a0a6b0"],
+  "Imperial Fists": ["#15120a", "#26200f", "#352c14", "#f2c230", "#8a7220", "#f6f0da", "#c9bd95"],
+  "Iron Hands": ["#0d0d0e", "#1d1e20", "#2a2c2f", "#d9483b", "#7a342d", "#ececec", "#a3a5a8", "#ffffff"],
+  "Raven Guard": ["#08090b", "#14161a", "#1f2228", "#cfd6df", "#5f6975", "#eceff3", "#98a1ad"],
+  "Salamanders": ["#08140d", "#112a1a", "#1a3d27", "#f0883a", "#8a5320", "#eef2e4", "#a3bba8"],
+  "Space Wolves": ["#0e1620", "#1a2736", "#25374b", "#a9cbe0", "#5d7b8f", "#eaf0f4", "#9fb2c0"],
+  "Ultramarines": ["#08112b", "#102050", "#182f70", "#e0bd52", "#7f6a2a", "#eef0f8", "#a9b4d6"],
+  "White Scars": ["#1a0b0c", "#2e1416", "#421d20", "#f2efe9", "#a83232", "#f6f2ee", "#cdb9b6"]
+};
+function applyTheme() {
+  const name = S.theme === "auto" || !THEMES[S.theme] ? S.chapter : S.theme;
+  const t = THEMES[name] || THEMES[CHAPTERS[0]];
+  const r = document.documentElement.style;
+  ["--field", "--panel", "--panel-hi", "--gold", "--gold-dim", "--bone", "--muted"].forEach((v, i) => r.setProperty(v, t[i]));
+  r.setProperty("--on", t[7] || "#12100a");
+}
+const thSel = $("theme");
+thSel.append(el("option", null, "Match Chapter"));
+thSel.firstChild.value = "auto";
+CHAPTERS.forEach(c => thSel.append(el("option", null, c)));
+thSel.value = THEMES[S.theme] ? S.theme : "auto";
+thSel.onchange = () => { S.theme = thSel.value; applyTheme(); save(); };
+function updateDP() {
+  const t = DETS.filter(x => S.dets.includes(x.n)).reduce((a, x) => a + x.dp, 0);
+  $("dp").textContent = `Detachment points used: ${t}. A 2,000-point game normally gives you 3.`;
+}
+
+function addUnit() {
+  const name = $("name").value.trim();
+  if (!name) { $("name").focus(); return; }
+  S.units.push({ name, doc: null }); $("name").value = ""; save(); render();
+}
+function newCommand() { S.active = null; S.units.forEach(u => u.doc = null); save(); render(); }
+function saveTurn() {
+  S.history.unshift({ ts: new Date().toLocaleString(), army: S.active, units: S.units.map(u => ({ name: u.name, doc: u.doc })) });
+  if (S.history.length > 100) S.history.length = 100;
+  newCommand();
+}
+let armed = null;
+function arm(btn, label, fn) {
+  if (armed && armed.btn === btn) { clearTimeout(armed.t); armed = null; btn.textContent = label; fn(); return; }
+  btn.textContent = "Tap again to confirm";
+  armed = { btn, t: setTimeout(() => { btn.textContent = label; armed = null; }, 4000) };
+}
+
+async function exportData() {
+  const data = JSON.stringify({ app: "doctrine-tracker", exported: new Date().toISOString(), state: S }, null, 2);
+  const name = "doctrine-tracker-data-" + new Date().toISOString().slice(0, 10) + ".json";
+  const file = new File([data], name, { type: "application/json" });
+  try {
+    const c = (window.claude && window.claude.use) ? await window.claude.use("downloads") : null;
+    if (c) {
+      try { await c.save({ filename: name, data }); $("bkmsg").textContent = "Saved " + name + "."; }
+      catch (e) { $("bkmsg").textContent = (e && e.code === "declined") ? "Export cancelled." : "Export isn't available here."; }
+      return;
+    }
+  } catch (e) {}
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Doctrine tracker data" }); $("bkmsg").textContent = "Shared. Choose Save to Files, then iCloud Drive."; return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  $("bkmsg").textContent = "Downloaded " + name + ".";
+}
+function importData(f) {
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d || !d.state || !Array.isArray(d.state.units)) throw new Error("bad");
+      const msg = $("bkmsg"); msg.textContent = "Replace everything in the app with this file? ";
+      const yes = el("button", null, "Replace");
+      yes.onclick = () => { S = Object.assign(S, d.state); save(); location.reload(); };
+      const no = el("button", null, "Cancel"); no.onclick = () => { msg.textContent = ""; };
+      msg.append(yes, document.createTextNode(" "), no);
+    } catch (e) { $("bkmsg").textContent = "That file isn't a doctrine tracker export."; }
+  };
+  r.readAsText(f);
+}
+
+$("addbtn").addEventListener("click", addUnit);
+$("name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addUnit(); } });
+$("add").addEventListener("submit", e => e.preventDefault());
+$("save").onclick = saveTurn;
+$("reset").onclick = newCommand;
+$("battle").onclick = () => arm($("battle"), "New battle", () => { S.uses = { Assault: 0, Devastator: 0, Tactical: 0 }; S.vow = ""; newCommand(); });
+$("clearhist").onclick = () => arm($("clearhist"), "Clear saved turns", () => { S.history = []; save(); render(); });
+$("export").onclick = exportData;
+$("import").onclick = () => $("file").click();
+$("file").onchange = e => importData(e.target.files[0]);
+buildDets();
+buildUnits();
+applyTheme();
+render();
+</script>
+</body>
+</html>
